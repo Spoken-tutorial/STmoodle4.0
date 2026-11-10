@@ -93,35 +93,6 @@ if (is_enrolled($context, $USER, '', true)) {
     redirect($destination);   // Bye!
 }
 
-/* verify test attendance before allowing course enrollment */
-include_once($CFG->dirroot . '/mod/quiz/spoken-config.php');
-$attendance_marked = false;
-$att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
-if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {
-    $stmt->bind_param("ii", $USER->id, $course->id);
-    $stmt->execute();
-    $att_res = $stmt->get_result();
-    $attendance_marked = ($att_res && $att_res->num_rows > 0);
-    $stmt->close();
-}
-if ($course->id == 7 || is_siteadmin()) {
-    $attendance_marked = true;
-}
-
-if (!$attendance_marked) {
-    $PAGE->set_title($course->shortname);
-    $PAGE->set_heading($course->fullname);
-    $PAGE->navbar->add(get_string('enrolmentoptions', 'enrol'));
-
-    echo $OUTPUT->header();
-    echo $OUTPUT->heading(get_string('enrolmentoptions', 'enrol'));
-    $courserenderer = $PAGE->get_renderer('core', 'course');
-    echo $courserenderer->course_info_box($course);
-    echo $OUTPUT->box('You cannot enroll for this test as your attendance is not marked.', 'generalbox alert alert-danger');
-    echo $OUTPUT->footer();
-    exit;
-}
-
 $PAGE->set_title($course->shortname);
 $PAGE->set_heading($course->fullname);
 $PAGE->navbar->add(get_string('enrolmentoptions','enrol'));

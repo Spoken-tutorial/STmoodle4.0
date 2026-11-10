@@ -113,24 +113,6 @@ if ($currentattemptid) {
     }
 }
 
-/* verify attendance before starting attempt */
-global $USER;
-include_once('spoken-config.php');
-
-$attendance_check_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND mdlquiz_id = ? AND status >= 1";
-$stmt = $mysqli->prepare($attendance_check_sql);
-$quizid = $quizobj->get_quizid();
-$stmt->bind_param("iii", $USER->id, $cm->course, $quizid);
-$stmt->execute();
-$res = $stmt->get_result();
-$is_marked = ($res && $res->num_rows > 0);
-$stmt->close();
-
-if (!$is_marked && $cm->course != 7) {
-    print_error('Your test attendance is not marked.', 'quiz', $quizobj->view_url());
-}
-
-
 $attempt = quiz_prepare_and_start_new_attempt($quizobj, $attemptnumber, $lastattempt);
 
 
@@ -139,11 +121,15 @@ $attempt = quiz_prepare_and_start_new_attempt($quizobj, $attemptnumber, $lastatt
 * When the user startattempt the quiz updating the it's status from 0 => 1
 */
 
+global $USER;
+include('spoken-config.php');
+
+
 /* where you run the query */
 $stmt = $mysqli->prepare($UPDATE_MDLUSER);
 $stmt->bind_param("issiii", $attempt->id, $USER->firstname, $USER->lastname, $USER->id, $cm->course, $attempt->quiz);
 $result = $stmt->execute();
-$stmt->close();
+
 
 /* Custom code ends */
 
