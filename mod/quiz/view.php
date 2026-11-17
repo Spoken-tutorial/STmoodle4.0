@@ -231,6 +231,13 @@ if(!empty($viewobj->attempts)) {
                 $stmt = $mysqli->prepare($update_attendance_sql);
                 $stmt->bind_param("diiii", $viewobj->mygrade, $USER->id, $quiz->course, $quiz->id, $a->id);
                 $result = $stmt->execute();
+                error_log(
+                    "[" . date("Y-m-d H:i:s") . "] " .
+                    __FILE__ . ":" . __LINE__ .
+                    " SPKDEBUG: Finished attempt recorded to events_testattendance status=3. userid=" . $USER->id . ", courseid=" . $quiz->course . ", quizid=" . $quiz->id . ", attemptid=" . $a->id . ", grade=" . $viewobj->mygrade . PHP_EOL,
+                    3,
+                    "/var/log/moodle-debug/debug.log"
+                );
             }
         }
     }
@@ -246,6 +253,14 @@ $sql = "select id from events_testattendance where mdluser_id = ".$USER->id." an
 
 $result = $mysqli->query($sql);
 $count = $result->num_rows;
+
+error_log(
+    "[" . date("Y-m-d H:i:s") . "] " .
+    __FILE__ . ":" . __LINE__ .
+    " SPKDEBUG: view.php first-time attendance query count=" . $count . " for userid=" . $USER->id . ", quizid=" . $quiz->id . PHP_EOL,
+    3,
+    "/var/log/moodle-debug/debug.log"
+);
 
 
 /**
@@ -272,6 +287,13 @@ if(!empty($viewobj->attempts)){
 
 
 if($count || $quiz->course == 7){
+    error_log(
+        "[" . date("Y-m-d H:i:s") . "] " .
+        __FILE__ . ":" . __LINE__ .
+        " SPKDEBUG: view.php allowing quiz attempt button (count=" . $count . ", course=" . $quiz->course . ") for userid=" . $USER->id . PHP_EOL,
+        3,
+        "/var/log/moodle-debug/debug.log"
+    );
     /* original data  start */
 
     $viewobj->preventmessages = array();
@@ -316,6 +338,13 @@ if($count || $quiz->course == 7){
     }
     /* original data  end */
 } else{
+    error_log(
+        "[" . date("Y-m-d H:i:s") . "] " .
+        __FILE__ . ":" . __LINE__ .
+        " SPKDEBUG: Quiz view access prevented - attendance not marked for userid=" . $USER->id . ", quizid=" . $quiz->id . PHP_EOL,
+        3,
+        "/var/log/moodle-debug/debug.log"
+    );
     $viewobj->preventmessages = array("Your test attendance is not marked.");
 }
 

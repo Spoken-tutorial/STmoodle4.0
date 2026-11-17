@@ -126,7 +126,22 @@ $res = $stmt->get_result();
 $is_marked = ($res && $res->num_rows > 0);
 $stmt->close();
 
+error_log(
+    "[" . date("Y-m-d H:i:s") . "] " .
+    __FILE__ . ":" . __LINE__ .
+    " SPKDEBUG: startattempt.php attendance check. userid=" . $USER->id . ", courseid=" . $cm->course . ", quizid=" . $quizid . ", is_marked=" . ($is_marked ? 'true' : 'false') . PHP_EOL,
+    3,
+    "/var/log/moodle-debug/debug.log"
+);
+
 if (!$is_marked && $cm->course != 7) {
+    error_log(
+        "[" . date("Y-m-d H:i:s") . "] " .
+        __FILE__ . ":" . __LINE__ .
+        " SPKDEBUG: startattempt.php blocking attempt start - attendance not marked. userid=" . $USER->id . ", quizid=" . $quizid . PHP_EOL,
+        3,
+        "/var/log/moodle-debug/debug.log"
+    );
     print_error('Your test attendance is not marked.', 'quiz', $quizobj->view_url());
 }
 
@@ -144,6 +159,14 @@ $stmt = $mysqli->prepare($UPDATE_MDLUSER);
 $stmt->bind_param("issiii", $attempt->id, $USER->firstname, $USER->lastname, $USER->id, $cm->course, $attempt->quiz);
 $result = $stmt->execute();
 $stmt->close();
+
+error_log(
+    "[" . date("Y-m-d H:i:s") . "] " .
+    __FILE__ . ":" . __LINE__ .
+    " SPKDEBUG: startattempt.php updated events_testattendance to status=2 for attemptid=" . $attempt->id . ", userid=" . $USER->id . ", courseid=" . $cm->course . ", quizid=" . $attempt->quiz . PHP_EOL,
+    3,
+    "/var/log/moodle-debug/debug.log"
+);
 
 /* Custom code ends */
 
