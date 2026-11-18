@@ -255,7 +255,10 @@ class enrol_self_plugin extends enrol_plugin {
 
         /* check attendance for self enrollment */
         if (!is_siteadmin() && $instance->courseid != 7) {
-            include_once($CFG->dirroot . '/mod/quiz/spoken-config.php');
+            global $mysqli;
+            if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+                require($CFG->dirroot . '/mod/quiz/spoken-config.php');
+            }
             $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
             $attendance_marked = false;
             if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {

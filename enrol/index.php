@@ -94,7 +94,10 @@ if (is_enrolled($context, $USER, '', true)) {
 }
 
 /* verify test attendance before allowing course enrollment */
-include_once($CFG->dirroot . '/mod/quiz/spoken-config.php');
+global $mysqli;
+if (!isset($mysqli) || !($mysqli instanceof mysqli)) {
+    require($CFG->dirroot . '/mod/quiz/spoken-config.php');
+}
 $attendance_marked = false;
 $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
 if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {
