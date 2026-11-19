@@ -219,12 +219,17 @@ if(!empty($viewobj->attempts)) {
 
         if ('finished' === $a->state) {
 
-            $sql = "select mdlcourse_id, mdlquiz_id, mdlattempt_id from events_testattendance where mdluser_id = ".$USER->id." and mdlcourse_id = ".$quiz->course." and mdlquiz_id = ".$quiz->id." and mdlattempt_id=".$a->id." and status = 2";
+            // use prepared statement instead of direct SQL string interpolation
+            $sql = "select mdlcourse_id, mdlquiz_id, mdlattempt_id from events_testattendance where mdluser_id = ? and mdlcourse_id = ? and mdlquiz_id = ? and mdlattempt_id = ? and status = 2";
 
-  
-
-            $result = $mysqli->query($sql);
-            $count = $result->num_rows;
+            $count = 0;
+            if ($stmt = $mysqli->prepare($sql)) {
+                $stmt->bind_param("iiii", $USER->id, $quiz->course, $quiz->id, $a->id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $count = $result ? $result->num_rows : 0;
+                $stmt->close();
+            }
 
             if ($count) {
                 /* where you run the query */
@@ -242,10 +247,17 @@ $count = 0;
 * When the user try to attempt the quiz very first time
 */
 
-$sql = "select id from events_testattendance where mdluser_id = ".$USER->id." and mdlcourse_id = ".$quiz->course." and mdlquiz_id = ".$quiz->id." and status >= 1 ";
+//use prepared statement instead of direct SQL string interpolation
+$sql = "select id from events_testattendance where mdluser_id = ? and mdlcourse_id = ? and mdlquiz_id = ? and status >= 1";
 
-$result = $mysqli->query($sql);
-$count = $result->num_rows;
+$count = 0;
+if ($stmt = $mysqli->prepare($sql)) {
+    $stmt->bind_param("iii", $USER->id, $quiz->course, $quiz->id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $count = $result ? $result->num_rows : 0;
+    $stmt->close();
+}
 
 
 /**
@@ -261,10 +273,38 @@ if(!empty($viewobj->attempts)){
         }
         // When re attempt begins
         if ('finished' !== $a->state) {
-            $sql = "select id from  events_testattendance where mdluser_id = '".$USER->email."' and mdlcourse_id = ".$quiz->course." and mdlquiz_id=".$a->quiz." and mdlattempt_id=".$a->id." and status <= 3";
+            error_log(
+                "[" . date("Y-m-d H:i:s") . "] " .
+                __FILE__ . ":" . __LINE__ .
+                " SPKDEBUG: Re-attempt query check START. attempt_state=" . $a->state . ", attempt_id=" . $a->id . ", attempt_quiz=" . $a->quiz . ", courseid=" . $quiz->course . ", USER->id=" . $USER->id . ", USER->email=" . ($USER->email ?? 'none') . PHP_EOL,
+                3,
+                "/var/log/moodle-debug/debug.log"
+            );
+            // use prepared statement instead of direct SQL string interpolation
+            $sql = "select id from events_testattendance where mdluser_id = ? and mdlcourse_id = ? and mdlquiz_id = ? and mdlattempt_id = ? and status <= 3";
 
-            $result = $mysqli->query($sql);
-            $count = $result->num_rows;
+            if ($stmt = $mysqli->prepare($sql)) {
+                $stmt->bind_param("siii", $USER->email, $quiz->course, $a->quiz, $a->id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $count = $result ? $result->num_rows : 0;
+                error_log(
+                    "[" . date("Y-m-d H:i:s") . "] " .
+                    __FILE__ . ":" . __LINE__ .
+                    " SPKDEBUG: Re-attempt query check EXECUTED. bound=[email=" . $USER->email . ", course=" . $quiz->course . ", quiz=" . $a->quiz . ", attempt=" . $a->id . "], num_rows=" . $count . ", mysqli_error=" . ($mysqli->error ?? 'none') . PHP_EOL,
+                    3,
+                    "/var/log/moodle-debug/debug.log"
+                );
+                $stmt->close();
+            } else {
+                error_log(
+                    "[" . date("Y-m-d H:i:s") . "] " .
+                    __FILE__ . ":" . __LINE__ .
+                    " SPKDEBUG: Re-attempt query prepare FAILED. error=" . ($mysqli->error ?? 'none') . PHP_EOL,
+                    3,
+                    "/var/log/moodle-debug/debug.log"
+                );
+            }
             break;
         }
     }

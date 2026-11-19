@@ -256,14 +256,115 @@ class enrol_self_plugin extends enrol_plugin {
         /* check attendance for self enrollment */
         if (!is_siteadmin() && $instance->courseid != 7) {
             include_once($CFG->dirroot . '/mod/quiz/spoken-config.php');
-            $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
             $attendance_marked = false;
+
+            // add quiz context checking to ensure attendance is verified for the specific quiz rather than granting broad course enrollment
+            $quizid = optional_param('quizid', 0, PARAM_INT);
+            error_log(
+                "[" . date("Y-m-d H:i:s") . "] " .
+                __FILE__ . ":" . __LINE__ .
+                " SPKDEBUG: enrol/self/lib.php optional_param quizid=" . $quizid . ", wantsurl=" . ($SESSION->wantsurl ?? 'empty') . PHP_EOL,
+                3,
+                "/var/log/moodle-debug/debug.log"
+            );
+            if (!$quizid && !empty($SESSION->wantsurl)) {
+                $parsed_url = parse_url($SESSION->wantsurl);
+                $path = $parsed_url['path'] ?? '';
+                // Only resolve quiz module if wantsurl is actually pointing to a quiz
+                if (strpos($path, '/mod/quiz/') !== false && !empty($parsed_url['query'])) {
+                    parse_str($parsed_url['query'], $query_params);
+                    $cmid = !empty($query_params['cmid']) ? (int)$query_params['cmid'] : (!empty($query_params['id']) ? (int)$query_params['id'] : 0);
+                    if ($cmid) {
+                        if ($cm = get_coursemodule_from_id('quiz', $cmid)) {
+                            $quizid = (int)$cm->instance;
+                        }
+                    } else if (!empty($query_params['q'])) {
+                        $quizid = (int)$query_params['q'];
+                    }
+                }
+            }
+            error_log(
+                "[" . date("Y-m-d H:i:s") . "] " .
+                __FILE__ . ":" . __LINE__ .
+                " SPKDEBUG: enrol/self/lib.php resolved quiz context. quizid=" . $quizid . PHP_EOL,
+                3,
+                "/var/log/moodle-debug/debug.log"
+            );
+
+            /*
+            // Original attendance check (commented out for reference):
+            $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
             if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {
                 $stmt->bind_param("ii", $USER->id, $instance->courseid);
                 $stmt->execute();
                 $att_res = $stmt->get_result();
                 $attendance_marked = ($att_res && $att_res->num_rows > 0);
                 $stmt->close();
+            }
+            */
+
+            if ($quizid) {
+                error_log(
+                    "[" . date("Y-m-d H:i:s") . "] " .
+                    __FILE__ . ":" . __LINE__ .
+                    " SPKDEBUG: enrol/self/lib.php branch [quiz-specific]. Checking attendance for userid=" . $USER->id . ", courseid=" . $instance->courseid . ", quizid=" . $quizid . PHP_EOL,
+                    3,
+                    "/var/log/moodle-debug/debug.log"
+                );
+                $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND mdlquiz_id = ? AND status >= 1";
+                if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {
+                    $stmt->bind_param("iii", $USER->id, $instance->courseid, $quizid);
+                    $stmt->execute();
+                    $att_res = $stmt->get_result();
+                    $attendance_marked = ($att_res && $att_res->num_rows > 0);
+                    error_log(
+                        "[" . date("Y-m-d H:i:s") . "] " .
+                        __FILE__ . ":" . __LINE__ .
+                        " SPKDEBUG: enrol/self/lib.php quiz-specific query executed. num_rows=" . ($att_res ? $att_res->num_rows : 'false') . ", attendance_marked=" . ($attendance_marked ? 'true' : 'false') . PHP_EOL,
+                        3,
+                        "/var/log/moodle-debug/debug.log"
+                    );
+                    $stmt->close();
+                } else {
+                    error_log(
+                        "[" . date("Y-m-d H:i:s") . "] " .
+                        __FILE__ . ":" . __LINE__ .
+                        " SPKDEBUG: enrol/self/lib.php quiz-specific query prepare FAILED. mysqli_error=" . ($mysqli->error ?? 'none') . PHP_EOL,
+                        3,
+                        "/var/log/moodle-debug/debug.log"
+                    );
+                }
+            } else {
+                error_log(
+                    "[" . date("Y-m-d H:i:s") . "] " .
+                    __FILE__ . ":" . __LINE__ .
+                    " SPKDEBUG: enrol/self/lib.php branch [course-only fallback]. Checking attendance for userid=" . $USER->id . ", courseid=" . $instance->courseid . PHP_EOL,
+                    3,
+                    "/var/log/moodle-debug/debug.log"
+                );
+                $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
+                if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {
+                    $stmt->bind_param("ii", $USER->id, $instance->courseid);
+                    $stmt->execute();
+                    $att_res = $stmt->get_result();
+                    $attendance_marked = ($att_res && $att_res->num_rows > 0);
+                    error_log(
+                        "[" . date("Y-m-d H:i:s") . "] " .
+                        __FILE__ . ":" . __LINE__ .
+                        " SPKDEBUG: enrol/self/lib.php course-only query executed. num_rows=" . ($att_res ? $att_res->num_rows : 'false') . ", attendance_marked=" . ($attendance_marked ? 'true' : 'false') . PHP_EOL,
+                        3,
+                        "/var/log/moodle-debug/debug.log"
+                    );
+                    $stmt->close();
+                } else {
+                    error_log(
+                        "[" . date("Y-m-d H:i:s") . "] " .
+                        __FILE__ . ":" . __LINE__ .
+                        " SPKDEBUG: enrol/self/lib.php course-only query prepare FAILED. mysqli_error=" . ($mysqli->error ?? 'none') . PHP_EOL,
+                        3,
+                        "/var/log/moodle-debug/debug.log"
+                    );
+                }
             }
             if (!$attendance_marked) {
                 return 'You cannot enroll for this test as your attendance is not marked.';
