@@ -253,24 +253,6 @@ class enrol_self_plugin extends enrol_plugin {
             return get_string('canntenrol', 'enrol_self');
         }
 
-        /* check attendance for self enrollment */
-        if (!is_siteadmin() && $instance->courseid != 7) {
-            include_once($CFG->dirroot . '/mod/quiz/spoken-config.php');
-            $att_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND status >= 1";
-            $attendance_marked = false;
-            if (isset($mysqli) && $stmt = $mysqli->prepare($att_sql)) {
-                $stmt->bind_param("ii", $USER->id, $instance->courseid);
-                $stmt->execute();
-                $att_res = $stmt->get_result();
-                $attendance_marked = ($att_res && $att_res->num_rows > 0);
-                $stmt->close();
-            }
-            if (!$attendance_marked) {
-                return 'You cannot enroll for this test as your attendance is not marked.';
-            }
-        }
-       
-
         if ($instance->enrolstartdate != 0 and $instance->enrolstartdate > time()) {
             return get_string('canntenrolearly', 'enrol_self', userdate($instance->enrolstartdate));
         }

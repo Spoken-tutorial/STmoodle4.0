@@ -990,37 +990,14 @@ class mod_quiz_renderer extends plugin_renderer_base {
      * @param mod_quiz_view_object $viewobj
      */
     public function view_page_notenrolled($course, $quiz, $cm, $context, $messages, $viewobj) {
-        global $CFG, $USER;
+        global $CFG;
         $output = '';
         $output .= $this->view_page_tertiary_nav($viewobj);
         $output .= $this->view_information($quiz, $cm, $context, $messages);
-
-        /* check attendance for enrollment */
-        include_once($CFG->dirroot . '/mod/quiz/spoken-config.php');
-        $attendance_check_sql = "SELECT id FROM events_testattendance WHERE mdluser_id = ? AND mdlcourse_id = ? AND mdlquiz_id = ? AND status >= 1";
-        $can_enrol = false;
-        if (isset($mysqli) && $stmt = $mysqli->prepare($attendance_check_sql)) {
-            $stmt->bind_param("iii", $USER->id, $course->id, $quiz->id);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            $can_enrol = ($res && $res->num_rows > 0);
-            $stmt->close();
-        }
-        if ($course->id == 7) {
-            $can_enrol = true;
-        }
-
-        if ($can_enrol) {
-            $youneedtoenrol = html_writer::tag('p', get_string('youneedtoenrol', 'quiz'));
-            $button = html_writer::tag('p',
-                    $this->continue_button($CFG->wwwroot . '/course/view.php?id=' . $course->id));
-            $output .= $this->box($youneedtoenrol."\n\n".$button."\n", 'generalbox', 'notice');
-        } else {
-            $notmarked = html_writer::tag('p', 'You cannot enroll for this test as your attendance is not marked.');
-            $output .= $this->box($notmarked, 'generalbox', 'notice');
-        }
-      
-
+        $youneedtoenrol = html_writer::tag('p', get_string('youneedtoenrol', 'quiz'));
+        $button = html_writer::tag('p',
+                $this->continue_button($CFG->wwwroot . '/course/view.php?id=' . $course->id));
+        $output .= $this->box($youneedtoenrol."\n\n".$button."\n", 'generalbox', 'notice');
         return $output;
     }
 
